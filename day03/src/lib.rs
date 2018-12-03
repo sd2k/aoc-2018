@@ -16,9 +16,9 @@ struct Claim {
 }
 
 impl FromStr for Claim {
-    type Err = String;
+    type Err = ();
 
-    fn from_str(s: &str) -> Result<Self, String> {
+    fn from_str(s: &str) -> Result<Self, ()> {
         lazy_static! {
             static ref RE: Regex = Regex::new(CLAIM_REGEX).unwrap();
         }
@@ -44,7 +44,7 @@ pub fn part1(input: &[&str]) -> usize {
         .map(|x| Claim::from_str(x).expect("could not parse claim"))
         .fold(HashMap::new(), |mut acc, claim| {
             for rect in claim.squares {
-                acc.entry(rect).and_modify(|e| *e += 1).or_insert(1);
+                acc.entry(rect).and_modify(|count| *count += 1).or_insert(1);
             }
             acc
         })
@@ -56,29 +56,34 @@ pub fn part1(input: &[&str]) -> usize {
 // Determine the number of claims per rectangle, then look for
 // claims whose rectangles only have a single claim.
 pub fn part2(input: &[&str]) -> String {
-    let claims: Vec<Claim> = input.iter().map(|x| Claim::from_str(x).unwrap()).collect();
+    let claims: Vec<Claim> = input
+        .iter()
+        .map(|line| Claim::from_str(line).unwrap())
+        .collect();
     let claims_per_rectangle =
         claims
             .iter()
             .fold(HashMap::new(), |mut acc: HashMap<Square, usize>, claim| {
                 for rect in &claim.squares {
-                    acc.entry(rect.clone()).and_modify(|e| *e += 1).or_insert(1);
+                    acc.entry(rect.clone())
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
                 }
                 acc
             });
     claims
-        .iter()
+        .into_iter()
         .filter_map(|claim| {
             // Check if any squares have more than one claim.
             // If not, return the ID.
-            match claim
+            if claim
                 .squares
                 .iter()
-                .filter(|rect| claims_per_rectangle.get(rect).unwrap() != &1)
-                .count()
+                .any(|rect| claims_per_rectangle.get(rect) != Some(&1))
             {
-                0 => Some(claim.id.clone()),
-                _ => None,
+                None
+            } else {
+                Some(claim.id)
             }
         })
         .next()
