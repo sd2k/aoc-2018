@@ -48,8 +48,42 @@ pub fn part1(input: &[&str]) -> u64 {
     counts.two * counts.three
 }
 
-pub fn part2(_input: &[&str]) -> Vec<char> {
-    unimplemented!()
+enum StrDiff {
+    One(usize),
+    More,
+}
+
+fn str_diff(a: &str, b: &str) -> StrDiff {
+    let diffs: Vec<usize> = a
+        .chars()
+        .enumerate()
+        .zip(b.chars())
+        .filter(|((_, a), b)| a != b)
+        .map(|((i, _), _)| i)
+        .collect();
+    match diffs.len() {
+        1 => StrDiff::One(diffs[0]),
+        _ => StrDiff::More,
+    }
+}
+
+pub fn part2(input: &[&str]) -> String {
+    for s1 in input.iter() {
+        for s2 in input.iter().skip(1) {
+            match str_diff(s1, s2) {
+                StrDiff::One(idx) => {
+                    return s1
+                        .chars()
+                        .enumerate()
+                        .filter(|(i, _)| i != &idx)
+                        .map(|(_, c)| c)
+                        .collect()
+                }
+                StrDiff::More => {}
+            }
+        }
+    }
+    unreachable!()
 }
 
 #[cfg(test)]
@@ -70,6 +104,6 @@ mod tests {
         let input = &[
             "abcde", "fghij", "klmno", "pqrst", "fguij", "axcye", "wvxyz",
         ];
-        assert_eq!(part2(input), vec!['f', 'g', 'i', 'j']);
+        assert_eq!(part2(input), "fgij");
     }
 }
