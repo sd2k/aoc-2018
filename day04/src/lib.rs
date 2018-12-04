@@ -36,9 +36,11 @@ impl Guard {
         }
     }
     fn most_common(&self) -> Minute {
-        let mut mins_vec: Vec<(&Minute, &u32)> = self.minutes_asleep.iter().collect();
-        mins_vec.sort_unstable_by_key(|el| el.1);
-        *mins_vec.iter().last().unwrap().0
+        self.minutes_asleep
+            .iter()
+            .max_by_key(|el| el.1)
+            .map(|el| *el.0)
+            .unwrap()
     }
     fn total_minutes_sleeping(&self) -> u32 {
         self.minutes_asleep.values().sum()
@@ -157,12 +159,12 @@ pub fn part1(input: &[&str]) -> u32 {
         .collect();
     entries.sort_unstable_by_key(|el| el.time);
     let guards = build_guard_map(&entries);
-    let mut total_minutes_sleeping: Vec<(GuardID, u32)> = guards
+    let sleepiest_guard: GuardID = guards
         .values()
         .map(|guard| (guard.id, guard.total_minutes_sleeping()))
-        .collect();
-    total_minutes_sleeping.sort_unstable_by_key(|el| el.1);
-    let sleepiest_guard = total_minutes_sleeping.iter().last().unwrap().0;
+        .max_by_key(|el| el.1)
+        .map(|el| el.0)
+        .unwrap();
     let most_common = guards[&sleepiest_guard].most_common();
     most_common.0 * sleepiest_guard.0
 }
@@ -175,19 +177,17 @@ pub fn part2(input: &[&str]) -> u32 {
         .collect();
     entries.sort_unstable_by_key(|el| el.time);
     let guards = build_guard_map(&entries);
-    let mut minutes_per_minute: Vec<(&GuardID, &Minute, &u32)> = guards
-        .iter()
+    let sleepiest_guard: (GuardID, Minute, u32) = guards
+        .into_iter()
         .flat_map(|(guard_id, guard)| {
             guard
                 .minutes_asleep
-                .iter()
-                .map(|(k, v)| (guard_id, k, v))
-                .collect::<Vec<(&GuardID, &Minute, &u32)>>()
+                .into_iter()
+                .map(move |(k, v)| (guard_id, k, v))
         })
-        .collect();
-    minutes_per_minute.sort_unstable_by_key(|el| el.2);
-    let most = minutes_per_minute.iter().last().unwrap();
-    (most.0).0 * (most.1).0
+        .max_by_key(|el| el.2)
+        .unwrap();
+    (sleepiest_guard.0).0 * (sleepiest_guard.1).0
 }
 
 #[cfg(test)]
