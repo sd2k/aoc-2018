@@ -1,0 +1,20 @@
+[package]
+name = "day04"
+version = "0.1.0"
+authors = ["Ben Sully <ben@bsull.io>"]
+edition = "2018"
+
+[dependencies]
+chrono = "*"
+env_logger = "*"
+hashbrown = "0.1"
+lazy_static = "*"
+log = "*"
+regex = "*"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "bench"
+harness = false
