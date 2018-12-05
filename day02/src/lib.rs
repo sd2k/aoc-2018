@@ -77,7 +77,7 @@ pub fn part2(input: &[&str]) -> String {
                         .enumerate()
                         .filter(|(i, _)| i != &idx)
                         .map(|(_, c)| c)
-                        .collect()
+                        .collect();
                 }
                 StrDiff::More => {}
             }
