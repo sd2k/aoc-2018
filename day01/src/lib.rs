@@ -1,17 +1,17 @@
-use std::collections::HashSet;
+use hashbrown::HashSet;
 
-fn parse_element(el: &str) -> i64 {
-    el.trim_left_matches('+').parse().unwrap()
+fn parse_element(el: &str) -> i32 {
+    el.parse().unwrap()
 }
 
-pub fn part1(input: &[&str]) -> i64 {
+pub fn part1(input: &[&str]) -> i32 {
     input.iter().map(|el| parse_element(el)).sum()
 }
 
-pub fn part2_functional(input: &[&str]) -> i64 {
+pub fn part2_functional(input: &[&str]) -> i32 {
     let mut seen = HashSet::new();
     seen.insert(0);
-    let err: Result<_, i64> = input.iter().cycle().try_fold(0, |acc, &x| {
+    let err: Result<_, i32> = input.iter().cycle().try_fold(0, |acc, &x| {
         let new = acc + parse_element(x);
         if seen.contains(&new) {
             return Err(new);
@@ -23,7 +23,7 @@ pub fn part2_functional(input: &[&str]) -> i64 {
     return err.err().unwrap();
 }
 
-pub fn part2_imperative(input: &[&str]) -> i64 {
+pub fn part2_imperative(input: &[&str]) -> i32 {
     let mut current = 0;
     let mut seen = HashSet::new();
     seen.insert(current);

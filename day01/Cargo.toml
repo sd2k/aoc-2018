@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Ben Sully <ben@bsull.io>"]
 edition = "2018"
 
+[dependencies]
+hashbrown = "*"
+
 [dev-dependencies]
 criterion = "0.2"
 
