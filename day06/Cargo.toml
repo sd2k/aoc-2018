@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Ben Sully <ben@bsull.io>"]
 edition = "2018"
 
+[dependencies]
+env_logger = "*"
+hashbrown = "*"
+log = "*"
+
 [dev-dependencies]
 criterion = "0.2"
 

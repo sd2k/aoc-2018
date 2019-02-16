@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -18,8 +18,18 @@ impl FromStr for Point {
     }
 }
 
+#[inline(always)]
 fn manhattan_distance(p: Point, q: Point) -> i32 {
     (p.x - q.x).abs() + (p.y - q.y).abs()
+}
+
+/// Get an iterator of points on the bounding box.
+fn bbox(x0: i32, x1: i32, y0: i32, y1: i32) -> impl Iterator<Item = Point> {
+    let top = (x0..x1).map(move |x| Point { x, y: y0 });
+    let bottom = (x0..x1).map(move |x| Point { x, y: y1 });
+    let left = ((y0 + 1)..(y1 - 1)).map(move |y| Point { x: x0, y });
+    let right = ((y0 + 1)..(y1 - 1)).map(move |y| Point { x: x1, y });
+    top.chain(right).chain(bottom).chain(left)
 }
 
 /// Determine which points have finite areas and are therefore valid candidates.
@@ -31,60 +41,33 @@ fn get_points_with_infinite_areas(
     x_range: (i32, i32),
     y_range: (i32, i32),
 ) -> HashSet<Point> {
-    let closest_to_top = ((x_range.0)..(x_range.1)).map(|x| {
-        *points
-            .iter()
-            .map(|point| (point, manhattan_distance(*point, Point { x, y: y_range.0 })))
-            .min_by_key(|x| x.1)
-            .map(|(point, _)| point)
-            .unwrap()
-    });
-    let closest_to_bottom = ((x_range.0)..(x_range.1)).map(|x| {
-        *points
-            .iter()
-            .map(|point| (point, manhattan_distance(*point, Point { x, y: y_range.1 })))
-            .min_by_key(|x| x.1)
-            .map(|(point, _)| point)
-            .unwrap()
-    });
-    let closest_to_left = ((y_range.0)..(y_range.1)).map(|y| {
-        *points
-            .iter()
-            .map(|point| (point, manhattan_distance(*point, Point { x: x_range.0, y })))
-            .min_by_key(|x| x.1)
-            .map(|(point, _)| point)
-            .unwrap()
-    });
-    let closest_to_right = ((y_range.0)..(y_range.1)).map(|y| {
-        *points
-            .iter()
-            .map(|point| (point, manhattan_distance(*point, Point { x: x_range.1, y })))
-            .min_by_key(|x| x.1)
-            .map(|(point, _)| point)
-            .unwrap()
-    });
-    closest_to_top
-        .chain(closest_to_right)
-        .chain(closest_to_bottom)
-        .chain(closest_to_left)
-        .collect::<HashSet<Point>>()
+    let bounding_box = bbox(x_range.0, x_range.1, y_range.0, y_range.1);
+    bounding_box
+        .map(|b| {
+            *points
+                .iter()
+                .map(|point| (point, manhattan_distance(*point, b)))
+                .min_by_key(|x| x.1)
+                .map(|(point, _)| point)
+                .unwrap()
+        })
+        .collect()
 }
 
 fn get_closest_point_nodupes(points: &[Point], x: i32, y: i32) -> Option<&Point> {
     let distances = points
         .iter()
         .map(|p| (p, manhattan_distance(*p, Point { x, y })))
-        .fold(HashMap::new(), |mut acc: HashMap<i32, Vec<&Point>>, x| {
-            acc.entry(x.1)
-                .and_modify(|e| e.push(x.0))
-                .or_insert_with(|| vec![x.0]);
-            acc
-        });
-    let closest_points = distances.iter().min_by_key(|kv| kv.0).unwrap().1;
-    match closest_points.len() {
-        1 => Some(closest_points[0]),
-        _ => None,
-    }
+        .fold(
+            HashMap::new(),
+            |mut acc: HashMap<i32, Option<&Point>>, x| {
+                acc.entry(x.1)
+                    .and_modify(|e| *e = None)
+                    .or_insert_with(|| Some(x.0));
+                acc
+            },
+        );
+    *distances.iter().min_by_key(|kv| kv.0).unwrap().1
 }
 
 pub fn part1(input: &[&str]) -> i32 {
@@ -97,10 +80,12 @@ pub fn part1(input: &[&str]) -> i32 {
         points.iter().map(|p| p.x).max().unwrap(),
         points.iter().map(|p| p.y).max().unwrap(),
     );
+    log::info!("Getting points with infinite areas");
     let invalid_points =
         get_points_with_infinite_areas(&points, (mins.0, maxes.0), (mins.1, maxes.1));
 
     let mut point_counts = HashMap::new();
+    log::info!("Getting point counts");
     for x in (mins.0)..(maxes.0) {
         for y in (mins.1)..(maxes.1) {
             let closest_point = get_closest_point_nodupes(&points, x, y);
@@ -112,6 +97,7 @@ pub fn part1(input: &[&str]) -> i32 {
             }
         }
     }
+    log::info!("Getting max point");
     let max_point = point_counts
         .iter()
         .filter(|(k, _)| !invalid_points.contains(k))
@@ -120,11 +106,15 @@ pub fn part1(input: &[&str]) -> i32 {
     *max_point.1
 }
 
-fn total_distance_to_all_points(candidate: Point, points: &[Point]) -> i32 {
-    points
-        .iter()
-        .map(|p| manhattan_distance(*p, candidate))
-        .sum()
+fn distance_less_than_max(candidate: Point, points: &[Point], max: i32) -> bool {
+    let mut dist = 0;
+    for point in points {
+        dist += manhattan_distance(*point, candidate);
+        if dist >= max {
+            return false;
+        }
+    }
+    return true;
 }
 
 pub fn part2(input: &[&str], max: i32) -> i32 {
@@ -138,9 +128,9 @@ pub fn part2(input: &[&str], max: i32) -> i32 {
         points.iter().map(|p| p.y).max().unwrap(),
     );
     let mut size = 0;
-    for x in (mins.0 - (max / 2))..(maxes.0 + (max / 2)) {
-        for y in (mins.1 - (max / 2))..(maxes.1 + (max / 2)) {
-            if total_distance_to_all_points(Point { x, y }, &points) < max {
+    for x in (mins.0)..(maxes.0) {
+        for y in (mins.1)..(maxes.1) {
+            if distance_less_than_max(Point { x, y }, &points, max) {
                 size += 1;
             }
         }
