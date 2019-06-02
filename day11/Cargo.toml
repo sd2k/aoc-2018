@@ -1,0 +1,16 @@
+[package]
+name = "day11"
+version = "0.1.0"
+authors = ["Ben Sully <ben@bsull.io>"]
+edition = "2018"
+
+[dependencies]
+itertools = "0.8"
+rayon = "1"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "bench"
+harness = false
