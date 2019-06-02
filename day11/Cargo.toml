@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 itertools = "0.8"
+summed-area-table = "*"
 rayon = "1"
 
 [dev-dependencies]

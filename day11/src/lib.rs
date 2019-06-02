@@ -2,18 +2,12 @@ use std::ops::RangeInclusive;
 
 use itertools::Itertools;
 use rayon::prelude::*;
+use summed_area_table::{SummedAreaTable, SummedAreaTableSource, VecSource};
 
 #[derive(Clone, Copy, Debug)]
 struct Coordinates {
     x: usize,
     y: usize,
-}
-
-impl Coordinates {
-    #[inline(always)]
-    fn power_index(&self, width: usize) -> usize {
-        (self.x - 1) * width + (self.y - 1)
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -41,8 +35,7 @@ fn powers(x_range: Axis, y_range: Axis, serial: Serial) -> Vec<isize> {
 fn max_corner(
     x_range: &[usize],
     y_range: &[usize],
-    powers: &[isize],
-    width: usize,
+    summed: &SummedAreaTable,
     window: usize,
 ) -> (Coordinates, isize) {
     x_range
@@ -51,12 +44,11 @@ fn max_corner(
             y_range
                 .windows(window)
                 .map(|ys| {
-                    let sum: isize = xs
-                        .into_iter()
-                        .cartesian_product(ys.into_iter())
-                        .map(|(x, y)| powers[Coordinates { x: *x, y: *y }.power_index(width)])
-                        .sum();
-                    (Coordinates { x: xs[0], y: ys[0] }, sum)
+                    // Subtract one because index in x_range / y_range start at 1
+                    let top_left = (xs[0] - 1, ys[0] - 1);
+                    let bottom_right = (xs[window - 1] - 1, ys[window - 1] - 1);
+                    let sum = summed.get_sum(top_left, bottom_right);
+                    (Coordinates { x: xs[0], y: ys[0] }, sum as isize)
                 })
                 .collect::<Vec<(Coordinates, isize)>>()
         })
@@ -70,10 +62,11 @@ pub fn part1(serial: usize, width: usize, window: usize) -> (usize, usize) {
     let x = 1..=width;
     let y = x.clone();
     let powers = powers(x.clone(), y.clone(), serial);
+    let summed = VecSource::new(&powers, width, width).calculate_full_summed_area_table();
     let x: Vec<usize> = x.collect();
     let y: Vec<usize> = y.collect();
-    let coordinates = max_corner(&x, &y, &powers, width, window).0;
-    (coordinates.x, coordinates.y)
+    let coordinates = max_corner(&x, &y, &summed, window).0;
+    (coordinates.y, coordinates.x)
 }
 
 pub fn part2(serial: usize, width: usize) -> (usize, usize, usize) {
@@ -81,14 +74,15 @@ pub fn part2(serial: usize, width: usize) -> (usize, usize, usize) {
     let x = 1..=width;
     let y = x.clone();
     let powers = powers(x.clone(), y.clone(), serial);
+    let summed = VecSource::new(&powers, width, width).calculate_full_summed_area_table();
     let x: Vec<usize> = x.collect();
     let y: Vec<usize> = y.collect();
     let (coordinates, window) = (1..(width + 1))
         .into_par_iter()
-        .map(|window| (max_corner(&x, &y, &powers, width, window), window))
+        .map(|window| (max_corner(&x, &y, &summed, window), window))
         .max_by_key(|el| (el.0).1)
         .unwrap();
-    (coordinates.0.x, coordinates.0.y, window)
+    (coordinates.0.y, coordinates.0.x, window)
 }
 
 #[cfg(test)]
